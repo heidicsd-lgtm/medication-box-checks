@@ -17,6 +17,33 @@ const fmtDate = (d) => { const [y, m, day] = d.split("-").map(Number); return ne
 const userErr = (msg) => Object.assign(new Error(msg), { user: true });
 const pinOk = (body) => !process.env.ADMIN_PIN || String(body.pin || "") === process.env.ADMIN_PIN;
 
+// Starting contents, added once. Removing an item later keeps it removed.
+const SEED = [
+  ["Amlodipine tabs",1,""],["Amoxicillin tabs 500mg",2,"box"],["Amoxiclav tabs 500/125mg",2,"box"],
+  ["Bisacodyl supps",1,"box"],["Cefalexin tabs 500mg",2,"box"],["Doxycycline tabs 100mg",1,"box"],
+  ["Electral sachets",1,"box"],["ENTOP spray",1,""],["Fleet enema",1,""],
+  ["Flucloxacillin tabs 500mg",2,"box"],["Hyoscine inj",1,""],["Laxsol tabs",1,""],
+  ["Levomepromazine inj",1,""],["Loperamide tabs",1,""],["Macrogol sachets",1,"box"],
+  ["Metoclopramide inj",1,""],["Metoclopramide tabs",1,""],["Metoprolol tabs",1,""],
+  ["Metronidazole tabs 200mg",2,"box"],["Microlax enema",2,""],["Nitrofurantoin tabs 100mg",1,"box"],
+  ["Ondansetron tabs 4mg",1,"box"],["Ondansetron tabs 8mg",1,"box"],["Paracetamol IV",1,""],
+  ["Parecoxib inj",1,""],["Pregabalin tabs",1,""],["Prochlorperazine inj",1,""],
+  ["Prochlorperazine tabs",1,""],["Roxithromycin tabs 300mg",2,"box"],["Trisul tabs 80/400mg",2,"box"],
+];
+async function ensureSeed(store) {
+  let added = 0;
+  const r = await mutate(store, "config", () => ({ ...DEF }), (cfg) => {
+    if (cfg.seededV1) return false;
+    cfg.items = cfg.items || [];
+    const have = new Set(cfg.items.map((i) => i.name.toLowerCase()));
+    added = 0;
+    for (const [name, min, unit] of SEED) if (!have.has(name.toLowerCase())) { cfg.items.push({ id: rid(), name, min, unit }); added++; }
+    cfg.items.sort((a, b) => a.name.localeCompare(b.name));
+    cfg.seededV1 = true;
+  });
+  if (r.changed && added) await masterLog(store, "Setup", `loaded ${added} medications from the starting list`);
+}
+
 async function getConfig(store) { return { ...DEF, ...((await store.get("config", { type: "json" })) || {}) }; }
 
 // Read, change and write one blob, retrying if someone else saved in between.
@@ -73,6 +100,7 @@ export default async (req) => {
   const path = new URL(req.url).pathname.replace(/^\/api\/?/, "");
   try {
     if (req.method === "GET" && path === "state") {
+      await ensureSeed(store);
       const [cfg, ml, { blobs }] = await Promise.all([getConfig(store), store.get("masterlog", { type: "json" }), store.list({ prefix: "c/" })]);
       const containers = {};
       await Promise.all(blobs.map(async (b) => { containers[b.key.slice(2)] = await store.get(b.key, { type: "json" }); }));
@@ -103,17 +131,20 @@ export default async (req) => {
           if (!name) throw userErr("Enter a medication name.");
           if (cfg.items.some((i) => i.name.toLowerCase() === name.toLowerCase())) throw userErr("That medication is already on the list.");
           if (cfg.items.length >= 100) throw userErr("The list is full.");
-          cfg.items.push({ id: rid(), name, min: int(body.min, 0, 999, 1) });
+          cfg.items.push({ id: rid(), name, min: int(body.min, 0, 999, 1), unit: body.unit === "box" ? "box" : "" });
+          cfg.items.sort((a, b) => a.name.localeCompare(b.name));
           msg = `added ${name} to every box, minimum ${int(body.min, 0, 999, 1)}`;
         } else if (body.action === "update") {
           const it = cfg.items.find((i) => i.id === body.id);
           if (!it) throw userErr("That medication is no longer on the list.");
           const name = clean(body.name, 80) || it.name, min = int(body.min, 0, 999, it.min);
+          const unit = body.unit === "box" ? "box" : "";
           const parts = [];
+          if (unit !== (it.unit || "")) parts.push(`${name} now counted in ${unit ? "boxes" : "single items"}`);
           if (name !== it.name) parts.push(`renamed ${it.name} to ${name}`);
           if (min !== it.min) parts.push(`changed ${name} minimum from ${it.min} to ${min}`);
           if (!parts.length) return false;
-          it.name = name; it.min = min; msg = parts.join(", ");
+          it.name = name; it.min = min; it.unit = unit; msg = parts.join(", ");
         } else if (body.action === "remove") {
           const it = cfg.items.find((i) => i.id === body.id);
           if (!it) return false;
