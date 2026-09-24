@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D5C88">
+<title>Medication box checks</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EAF0F4;--surface:#FFFFFF;--ink:#14212B;--muted:#56687A;--line:#CBD6DF;
+  --accent:#1D5C88;--accent-ink:#FFFFFF;--accent-soft:#DCEAF5;
+  --ok:#2C7A4B;--ok-bg:#E3F2E8;--warn:#9A5B00;--warn-bg:#FDF0D8;--bad:#B0241C;--bad-bg:#FBE3E1;
+  --tap:56px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151B;--surface:#16212A;--ink:#E4ECF2;--muted:#93A4B3;--line:#2B3B48;
+    --accent:#6DB2E2;--accent-ink:#0E151B;--accent-soft:#1B3347;
+    --ok:#5CC48A;--ok-bg:#15301F;--warn:#F2AE45;--warn-bg:#35270F;--bad:#FF7F74;--bad-bg:#3A1917;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151B;--surface:#16212A;--ink:#E4ECF2;--muted:#93A4B3;--line:#2B3B48;
+  --accent:#6DB2E2;--accent-ink:#0E151B;--accent-soft:#1B3347;
+  --ok:#5CC48A;--ok-bg:#15301F;--warn:#F2AE45;--warn-bg:#35270F;--bad:#FF7F74;--bad-bg:#3A1917;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:18px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 120px}
+header.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+header.top h1{font-size:1.4rem;margin:0;line-height:1.2}
+.sync{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.muted{color:var(--muted)}.small{font-size:.88rem}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:var(--tap);padding:12px 20px;border-radius:14px;border:2px solid var(--line);background:var(--surface);font-weight:700;font-size:1.05rem;text-align:center;width:100%}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn+.btn{margin-top:10px}
+.link{background:none;border:0;min-height:44px;padding:0 4px;color:var(--accent);font-weight:700;font-size:1rem}
+
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.chip{border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:10px;min-height:76px;text-align:left}
+.chip b{display:block;font-size:1.8rem;line-height:1.1}
+.chip span{font-size:.85rem;color:var(--muted)}
+.chip.on{border-color:var(--ink);border-width:3px}
+.chip.c2 b{color:var(--bad)}.chip.c1 b{color:var(--warn)}.chip.c0 b{color:var(--ok)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:10px}
+.tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:124px;padding:12px 10px 10px 18px;border:2px solid var(--line);border-radius:16px;background:var(--surface);text-align:left;overflow:hidden}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:var(--ok)}
+.tile.lv1::before{background:var(--warn)}.tile.lv2::before{background:var(--bad)}
+.tile .num{font-size:2.4rem;font-weight:700;line-height:1}
+.tile .tname{font-size:.8rem;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .tstat{font-size:.88rem;font-weight:700;margin-top:auto;line-height:1.25}
+.tile.lv0 .tstat{color:var(--ok)}.tile.lv1 .tstat{color:var(--warn)}.tile.lv2 .tstat{color:var(--bad)}
+
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:16px;padding:22px;text-align:center}
+.empty p{margin:0 0 12px}
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;min-height:48px;padding:0;color:var(--accent);font-weight:700;font-size:1.05rem}
+.chead{margin:0 0 14px}
+.chead h2{margin:0;font-size:1.6rem;line-height:1.2}
+.list{background:var(--surface);border:2px solid var(--line);border-radius:16px;overflow:hidden}
+.row{display:flex;width:100%;min-height:72px;align-items:center;gap:12px;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}
+.row:last-child{border-bottom:0}
+.row .main{flex:1;min-width:0}
+.row .name{font-weight:700;font-size:1.05rem}
+.row .meta{font-size:.88rem;color:var(--muted)}
+.row .chev{color:var(--muted);font-size:1.4rem}
+.qty{font-size:1.3rem;font-weight:700;white-space:nowrap;text-align:right}
+.qty small{display:block;font-size:.75rem;font-weight:400;color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pill{font-size:.78rem;font-weight:700;padding:3px 9px;border-radius:999px}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.ok{background:var(--ok-bg);color:var(--ok)}
+h3.sec{font-size:1.05rem;margin:24px 0 8px}
+.log{font-size:.9rem}
+.log div{padding:10px 16px;border-bottom:1px solid var(--line)}
+.log div:last-child{border-bottom:0}
+.mt{margin-top:16px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;background:var(--surface);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav.tabs button{flex:1;max-width:180px;min-height:68px;background:none;border:0;padding:8px 2px 10px;font-size:.82rem;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+nav.tabs button[aria-current="page"]{color:var(--accent)}
+nav.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
+nav.tabs svg{width:28px;height:28px}
+.badge{position:absolute;top:6px;left:calc(50% + 8px);min-width:22px;padding:0 6px;border-radius:999px;background:var(--bad);color:#fff;font-size:.72rem;line-height:22px}
+
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:5px;margin-bottom:16px}
+.seg button{min-height:48px;border:0;border-radius:11px;background:none;font-weight:700;font-size:.92rem;color:var(--muted);padding:6px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice{min-height:var(--tap);border:2px solid var(--line);border-radius:14px;background:var(--surface);font-weight:700;font-size:.95rem;padding:8px 10px;text-align:center}
+.choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:10px}
+.pick{min-height:var(--tap);border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700;font-size:1.2rem}
+.pick[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+.card{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:16px;margin-top:16px}
+.card:first-child{margin-top:0}
+.card h3{margin:0 0 6px;font-size:1.1rem}
+label.f{display:block;font-size:.95rem;font-weight:700;margin:14px 0 6px}
+input[type=text],input[type=number],input[type=date],input[type=password],select{width:100%;min-height:var(--tap);padding:10px 14px;border:2px solid var(--line);border-radius:12px;background:var(--bg);font-size:1.05rem}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 22px) 50%,calc(100% - 16px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:40px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper button{width:var(--tap);height:var(--tap);flex:none;border-radius:14px;border:2px solid var(--line);background:var(--bg);font-size:1.7rem;font-weight:700;line-height:1}
+.stepper input{text-align:center;font-size:1.4rem;font-weight:700;flex:1;min-width:0}
+.preview{background:var(--accent-soft);border-radius:12px;padding:12px 14px;margin:16px 0 12px;font-weight:700}
+.preview.none{background:var(--bg);color:var(--muted);font-weight:400}
+.note{background:var(--warn-bg);border-radius:12px;padding:12px 14px;font-size:.92rem;margin-bottom:14px}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.scrim[hidden]{display:none}
+.sheet{background:var(--bg);width:100%;max-width:620px;max-height:94%;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet h2{margin:0 0 2px;font-size:1.35rem;line-height:1.25}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.close{background:var(--surface);border:2px solid var(--line);border-radius:999px;width:52px;height:52px;flex:none;font-size:1.6rem;line-height:1}
+.batch{padding:14px 16px;border-bottom:1px solid var(--line)}
+.batch:last-child{border-bottom:0}
+.batch .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.batch .acts button{min-height:52px;border-radius:12px;border:2px solid var(--line);background:var(--bg);font-weight:700;font-size:1rem}
+.batch .acts .rmb{color:var(--bad);border-color:var(--bad)}
+.signas{font-size:.9rem;color:var(--muted);margin-top:10px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+
+.setrow{display:flex;gap:10px;align-items:center;padding:6px 0}
+.setrow b{width:30px;text-align:right;flex:none}
+.tablewrap{overflow-x:auto;background:var(--surface);border:2px solid var(--line);border-radius:16px}
+.restock{width:100%;border-collapse:collapse}
+.restock td,.restock th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:.92rem}
+.restock th{font-size:.8rem;color:var(--muted)}
+.restock tr:last-child td{border-bottom:0}
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-size:.95rem;z-index:40;max-width:92vw;opacity:0;pointer-events:none;transition:opacity .2s;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1 id="title">Medication box checks</h1><span class="sync" id="sync">Loading…</span></header>
+  <main id="app"></main>
+</div>
+<nav class="tabs" aria-label="Sections">
+  <button data-tab="boxes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Boxes</button>
+  <button data-tab="issues"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg>Issues<span id="ibadge"></span></button>
+  <button data-tab="master"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Master stock</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const store={get(k){try{return localStorage.getItem(k)||''}catch(e){return ''}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const sess={get(k){try{return sessionStorage.getItem(k)||''}catch(e){return ''}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
+
+let initials=store.get('medcheck-initials');
+let pin=sess.get('medcheck-pin');
+let config=null,loaded=false,offline=false,pinRequired=false,masterlog=[];
+const containers={};
+const view={tab:'boxes',cid:null,filter:null,mtab:'contents'};
+let sheet=null,settingsDraft=null,busy=false;
+const bulk={itemId:'',mode:'fixed',qty:1,exp:'',target:'all',picked:new Set(),rmItem:'all',rmMode:'expired',rmExp:'',rmTarget:'all',rmPicked:new Set()};
+
+const DEF={name:'Medication box checks',count:20,warnDays:30,checkDays:30,labels:{},items:[]};
+const cfg=()=>({...DEF,...(config||{})});
+const cids=()=>Array.from({length:cfg().count},(_,i)=>'c'+String(i+1).padStart(2,'0'));
+const cNum=cid=>parseInt(cid.slice(1),10);
+const cLabel=cid=>(cfg().labels||{})[cid]||'';
+const cTitle=cid=>'Box '+cNum(cid)+(cLabel(cid)?', '+cLabel(cid):'');
+const itemById=id=>cfg().items.find(i=>i.id===id);
+const plural=(n,w,p)=>n+' '+(n===1?w:(p||w+'s'));
+
+function nzToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Pacific/Auckland'})}
+function daysUntil(exp){const[y,m,d]=exp.split('-').map(Number);const[ty,tm,td]=nzToday().split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/864e5)}
+function fmtDate(exp){const[y,m,d]=exp.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'})}
+function relDays(n){if(n<0)return n===-1?'expired yesterday':'expired '+(-n)+' days ago';if(n===0)return 'expires today';if(n===1)return 'expires tomorrow';return 'in '+n+' days'}
+function ago(ts){if(!ts)return 'Never checked';const d=Math.floor((Date.now()-ts)/864e5);if(d<1)return 'Checked today';if(d===1)return 'Checked yesterday';return 'Checked '+d+' days ago'}
+function stamp(ts){return new Date(ts).toLocaleString('en-NZ',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}
+
+const FLAG={missing:['Missing','bad'],expired:['Expired','bad'],empty:['None in date','bad'],low:['Low','warn'],expiring:['Expires soon','warn']};
+function assess(item,entry){
+  const batches=((entry&&entry.batches)||[]).filter(b=>b.qty>0).slice().sort((a,b)=>a.exp<b.exp?-1:1);
+  let total=0,good=0,expired=0,soon=null,soonExp=null;
+  for(const b of batches){total+=b.qty;const du=daysUntil(b.exp);if(du<0)expired+=b.qty;else{good+=b.qty;if(soon===null||du<soon){soon=du;soonExp=b.exp}}}
+  const flags=[];
+  if(total===0)flags.push('missing');
+  else{if(expired>0)flags.push('expired');if(good===0)flags.push('empty');else if(good<item.min)flags.push('low');if(soon!==null&&soon<=cfg().warnDays)flags.push('expiring')}
+  const level=flags.some(f=>FLAG[f][1]==='bad')?2:flags.length?1:0;
+  return {batches,total,good,expired,soon,soonExp,flags,level};
+}
+function assessC(cid){
+  const c=containers[cid]||{};let level=0,bad=0,warn=0;const res={};
+  for(const it of cfg().items){const a=assess(it,(c.items||{})[it.id]);res[it.id]=a;level=Math.max(level,a.level);if(a.level===2)bad++;else if(a.level===1)warn++}
+  const at=c.checked&&c.checked.at;const overdue=!at||(Date.now()-at)>cfg().checkDays*864e5;
+  if(overdue)level=Math.max(level,1);
+  return {level,bad,warn,res,checked:c.checked,overdue};
+}
+function tileStatus(a){
+  const bits=[];if(a.bad)bits.push(a.bad+' urgent');if(a.warn)bits.push(a.warn+' to watch');if(a.overdue)bits.push('Check due');
+  return bits.length?bits.join(', '):'All good';
+}
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),3000)}
+function setSync(s){$('#sync').textContent=s}
+
+async function api(path,body){
+  const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});
+  let data={};try{data=await r.json()}catch(_){}
+  if(!r.ok){const e=new Error(data.error||('Error '+r.status));e.status=r.status;throw e}
+  return data;
+}
+const errMsg=e=>e&&e.status?e.message:'No connection. Check your signal and try again.';
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===view.tab?'page':'false'));
+  $('#title').textContent=cfg().name;document.title=cfg().name;
+  let bad=0;if(loaded&&cfg().items.length)for(const cid of cids())bad+=assessC(cid).bad;
+  $('#ibadge').innerHTML=bad?'<span class="badge">'+bad+'</span>':'';
+  const app=$('#app');
+  if(offline&&!loaded){app.innerHTML='<div class="empty"><p><b>Cannot reach the stock list.</b></p><p class="muted">Check your connection. The page will keep trying.</p></div>';return}
+  if(!loaded){app.innerHTML='<p class="muted">Loading boxes…</p>';return}
+  if(view.tab==='boxes')view.cid?renderBox(app):renderGrid(app);
+  else if(view.tab==='issues')renderIssues(app);
+  else if(pinRequired&&!pin)renderPin(app);
+  else if(view.tab==='master')renderMaster(app);
+  else renderSettings(app);
+}
+
+function noContents(app){
+  app.innerHTML='<div class="empty"><p><b>No medications on the list yet.</b></p><p class="muted">Add the medications every box should hold in Master stock, then the checks can start.</p><button class="btn primary" data-go="master">Go to Master stock</button></div>';
+}
+
+function renderGrid(app){
+  if(!cfg().items.length)return noContents(app);
+  const all=cids().map(cid=>({cid,...assessC(cid)}));
+  const n=[0,0,0];all.forEach(a=>n[a.level]++);
+  const f=view.filter;
+  let h='<div class="summary">'+
+    '<button class="chip c2'+(f===2?' on':'')+'" data-filter="2" aria-pressed="'+(f===2)+'"><b>'+n[2]+'</b><span>Need action</span></button>'+
+    '<button class="chip c1'+(f===1?' on':'')+'" data-filter="1" aria-pressed="'+(f===1)+'"><b>'+n[1]+'</b><span>Due soon, low or check due</span></button>'+
+    '<button class="chip c0'+(f===0?' on':'')+'" data-filter="0" aria-pressed="'+(f===0)+'"><b>'+n[0]+'</b><span>All good</span></button></div><div class="grid">';
+  for(const a of all){
+    if(f!==null&&a.level!==f)continue;
+    h+='<button class="tile lv'+a.level+'" data-box="'+a.cid+'" aria-label="'+esc(cTitle(a.cid))+', '+tileStatus(a)+'"><span class="num">'+cNum(a.cid)+'</span>'+(cLabel(a.cid)?'<span class="tname">'+esc(cLabel(a.cid))+'</span>':'')+'<span class="tstat">'+tileStatus(a)+'</span></button>';
+  }
+  h+='</div>';
+  if(f!==null)h+='<button class="btn mt" data-filter="clear">Show all boxes</button>';
+  app.innerHTML=h;
+}
+
+function itemRow(cid,it,a){
+  const pills=a.flags.length?a.flags.map(k=>'<span class="pill '+FLAG[k][1]+'">'+FLAG[k][0]+'</span>').join(''):'<span class="pill ok">OK</span>';
+  const meta=a.soonExp?'Next expiry '+fmtDate(a.soonExp)+', '+relDays(a.soon):(a.total?'All stock expired':'Nothing signed in');
+  return '<button class="row" data-item="'+it.id+'" data-cid="'+cid+'"><span class="main"><span class="name">'+esc(it.name)+'</span><br><span class="meta">'+meta+'</span><span class="pills">'+pills+'</span></span><span class="qty">'+a.good+'<small>of '+it.min+'</small></span></button>';
+}
+
+function renderBox(app){
+  const cid=view.cid,a=assessC(cid),c=containers[cid]||{};
+  const items=cfg().items.slice().sort((x,y)=>a.res[y.id].level-a.res[x.id].level);
+  let h='<button class="back" data-back>‹ All boxes</button><div class="chead"><h2>'+esc(cTitle(cid))+'</h2><div class="pills">'+
+    (a.overdue?'<span class="pill warn">Check due</span>':'')+'<span class="muted small">'+ago(a.checked&&a.checked.at)+(a.checked&&a.checked.by?' by '+esc(a.checked.by):'')+'</span></div></div>';
+  if(!items.length)h+='<div class="empty"><p class="muted">No medications on the list yet.</p></div>';
+  else h+='<div class="list">'+items.map(it=>itemRow(cid,it,a.res[it.id])).join('')+'</div><p class="small muted">Tap a medication to sign stock in, or to remove used or expired stock.</p>';
+  h+='<button class="btn primary" data-check="'+cid+'">Mark box as checked</button>';
+  const log=(Array.isArray(c.log)?c.log:[]).slice(0,12);
+  if(log.length)h+='<h3 class="sec">Recent activity</h3><div class="list log">'+log.map(l=>'<div><b>'+esc(l.by||'?')+'</b> '+esc(l.t)+'<br><span class="muted small">'+stamp(l.at)+'</span></div>').join('')+'</div>';
+  app.innerHTML=h;
+}
+
+function renderIssues(app){
+  if(!cfg().items.length)return noContents(app);
+  const now=[],soon=[],overdue=[];const need={};
+  cfg().items.forEach(it=>need[it.id]={name:it.name,short:0,exp:0,where:new Set()});
+  for(const cid of cids()){
+    const a=assessC(cid);if(a.overdue)overdue.push({cid,a});
+    for(const it of cfg().items){
+      const r=a.res[it.id];if(!r.flags.length)continue;
+      (r.level===2?now:soon).push({cid,it,r});
+      const n=need[it.id];n.short+=Math.max(0,it.min-r.good);
+      n.exp+=r.batches.filter(b=>{const d=daysUntil(b.exp);return d>=0&&d<=cfg().warnDays}).reduce((s,b)=>s+b.qty,0);
+      n.where.add(cNum(cid));
+    }
+  }
+  const line=e=>{const r=e.r;const why=r.flags.map(k=>FLAG[k][0].toLowerCase()).join(', ');const exp=r.soonExp?', next exp '+fmtDate(r.soonExp):'';
+    return '<button class="row" data-item="'+e.it.id+'" data-cid="'+e.cid+'"><span class="main"><span class="name">'+esc(cTitle(e.cid))+'</span><br><span class="meta">'+esc(e.it.name)+': '+why+exp+'</span></span><span class="qty">'+r.good+'<small>of '+e.it.min+'</small></span></button>'};
+  let h='';
+  if(!now.length&&!soon.length&&!overdue.length)h+='<div class="empty"><p><b>Every box is stocked, in date and checked.</b></p></div>';
+  if(now.length)h+='<h3 class="sec" style="margin-top:0">Act now ('+now.length+')</h3><div class="list">'+now.map(line).join('')+'</div>';
+  if(soon.length)h+='<h3 class="sec">Low or expiring soon ('+soon.length+')</h3><div class="list">'+soon.map(line).join('')+'</div>';
+  if(overdue.length)h+='<h3 class="sec">Monthly check due ('+overdue.length+')</h3><div class="list">'+overdue.map(o=>'<button class="row" data-box="'+o.cid+'"><span class="main"><span class="name">'+esc(cTitle(o.cid))+'</span><br><span class="meta">'+ago(o.a.checked&&o.a.checked.at)+'</span></span><span class="chev">›</span></button>').join('')+'</div>';
+  const rows=Object.values(need).filter(n=>n.short||n.exp);
+  if(rows.length)h+='<h3 class="sec">Restock totals</h3><div class="tablewrap"><table class="restock"><thead><tr><th>Medication</th><th>Needed to reach minimum</th><th>Expiring within '+cfg().warnDays+' days</th><th>Boxes</th></tr></thead><tbody>'+
+    rows.map(n=>'<tr><td>'+esc(n.name)+'</td><td>'+n.short+'</td><td>'+n.exp+'</td><td>'+[...n.where].sort((a,b)=>a-b).join(', ')+'</td></tr>').join('')+'</tbody></table></div>';
+  h+='<button class="btn mt" data-csv>Download stock report (CSV)</button>';
+  app.innerHTML=h;
+}
+
+function renderPin(app){
+  app.innerHTML='<div class="card"><h3>Enter the setup PIN</h3><p class="muted small" style="margin:0">Master stock and Settings are PIN protected. Checking boxes and signing stock in and out does not need it.</p>'+
+    '<label class="f" for="pinin">PIN</label><input type="password" id="pinin" inputmode="numeric" autocomplete="off"><button class="btn primary mt" data-unlock>Unlock</button></div>';
+  setTimeout(()=>$('#pinin')&&$('#pinin').focus(),50);
+}
+
+/* ---------- master stock ---------- */
+function seg(key,opts,cur){return '<div class="seg" role="group">'+opts.map(([v,l])=>'<button data-'+key+'="'+v+'" aria-pressed="'+(cur===v)+'">'+l+'</button>').join('')+'</div>'}
+function choices(key,opts,cur){return '<div class="choices">'+opts.map(([v,l])=>'<button class="choice" data-'+key+'="'+v+'" aria-pressed="'+(cur===v)+'">'+l+'</button>').join('')+'</div>'}
+function pickGrid(key,set){return '<div class="pickgrid">'+cids().map(cid=>'<button class="pick" data-'+key+'="'+cid+'" aria-pressed="'+set.has(cid)+'" aria-label="'+esc(cTitle(cid))+'">'+cNum(cid)+'</button>').join('')+'</div>'}
+function itemOptions(sel,withAll){return (withAll?'<option value="all"'+(sel==='all'?' selected':'')+'>All medications</option>':'<option value="">Choose a medication</option>')+cfg().items.map(i=>'<option value="'+i.id+'"'+(sel===i.id?' selected':'')+'>'+esc(i.name)+'</option>').join('')}
+function stepper(id,val,min){return '<div class="stepper"><button data-step="'+id+'" data-d="-1" aria-label="One fewer">−</button><input type="number" id="'+id+'" min="'+min+'" max="999" value="'+val+'" inputmode="numeric"><button data-step="'+id+'" data-d="1" aria-label="One more">+</button></div>'}
+
+function renderMaster(app){
+  let h=seg('mtab',[['contents','Contents'],['add','Bulk sign in'],['remove','Bulk remove']],view.mtab);
+  if(view.mtab==='contents')h+=masterContents();
+  else if(view.mtab==='add')h+=masterAdd();
+  else h+=masterRemove();
+  if(masterlog.length)h+='<h3 class="sec">Recent master changes</h3><div class="list log">'+masterlog.slice(0,10).map(l=>'<div><b>'+esc(l.by||'?')+'</b> '+esc(l.t)+'<br><span class="muted small">'+stamp(l.at)+'</span></div>').join('')+'</div>';
+  app.innerHTML=h;
+}
+function masterContents(){
+  const items=cfg().items;
+  let h='<p class="muted small" style="margin-top:0">Every box holds the same contents. Adding or removing a medication here changes every box at once.</p>';
+  h+=items.length?'<div class="list">'+items.map(i=>'<button class="row" data-edititem="'+i.id+'"><span class="main"><span class="name">'+esc(i.name)+'</span><br><span class="meta">Minimum '+i.min+' in each box</span></span><span class="chev">›</span></button>').join('')+'</div>':'<div class="empty"><p class="muted">No medications yet. Add the first one below.</p></div>';
+  h+='<button class="btn primary mt" data-newitem>Add a medication</button>';
+  return h;
+}
+function addTargets(){
+  const it=itemById(bulk.itemId);if(!it)return [];
+  return cids().filter(cid=>{const r=assess(it,((containers[cid]||{}).items||{})[it.id]);
+    if(bulk.target==='below')return r.good<it.min;if(bulk.target==='missing')return r.total===0;if(bulk.target==='pick')return bulk.picked.has(cid);return true});
+}
+function addPreview(){
+  const it=itemById(bulk.itemId);
+  if(!it)return ['Choose a medication to see what will be added.',false];
+  if(!bulk.exp)return ['Enter the expiry date from the packaging.',false];
+  if(daysUntil(bulk.exp)<0)return ['That expiry date has already passed.',false];
+  const t=addTargets();
+  if(bulk.mode==='topup'){
+    let units=0,boxes=0;for(const cid of t){const r=assess(it,((containers[cid]||{}).items||{})[it.id]);const n=Math.max(0,it.min-r.good);if(n){units+=n;boxes++}}
+    return units?['Adds '+plural(units,'unit')+' of '+it.name+' across '+plural(boxes,'box','boxes')+', bringing each up to '+it.min+'. You will need '+units+' in hand.',true]:['Every chosen box already has at least '+it.min+' in date.',false];
+  }
+  const q=Math.max(0,parseInt(bulk.qty,10)||0);
+  if(!q)return ['Enter how many to add to each box.',false];
+  if(!t.length)return ['No boxes match that choice.',false];
+  return ['Adds '+q+' '+it.name+' to each of '+plural(t.length,'box','boxes')+'. You will need '+(q*t.length)+' in hand.',true];
+}
+function masterAdd(){
+  if(!cfg().items.length)return '<div class="empty"><p class="muted">Add medications in Contents first.</p></div>';
+  const [txt,ok]=addPreview();
+  return '<div class="card"><h3>Sign stock into several boxes</h3><p class="muted small" style="margin:0">For restocking days, when the same stock goes into many boxes.</p>'+
+    '<label class="f" for="b-item">Medication</label><select id="b-item" data-bind="itemId">'+itemOptions(bulk.itemId)+'</select>'+
+    '<label class="f">How much</label>'+choices('bmode',[['fixed','Same amount in each box'],['topup','Top up to minimum']],bulk.mode)+
+    (bulk.mode==='fixed'?'<label class="f" for="b-qty">Amount per box</label>'+stepper('b-qty',bulk.qty,1):'')+
+    '<label class="f" for="b-exp">Expiry date on the packaging</label><input type="date" id="b-exp" data-bind="exp" value="'+esc(bulk.exp)+'" min="'+nzToday()+'">'+
+    '<label class="f">Which boxes</label>'+choices('btarget',[['all','All boxes'],['below','Below minimum'],['missing','Missing it'],['pick','Choose boxes']],bulk.target)+
+    (bulk.target==='pick'?pickGrid('bpick',bulk.picked):'')+
+    '<div class="preview'+(ok?'':' none')+'" id="b-preview">'+esc(txt)+'</div>'+
+    '<button class="btn primary" data-bulkadd'+(ok?'':' disabled')+'>Sign in to boxes</button></div>';
+}
+function rmMatches(){
+  const items=bulk.rmItem==='all'?cfg().items:cfg().items.filter(i=>i.id===bulk.rmItem);
+  const targets=bulk.rmTarget==='pick'?cids().filter(c=>bulk.rmPicked.has(c)):cids();
+  let units=0,boxes=0;
+  for(const cid of targets){let hit=0;for(const it of items){const r=assess(it,((containers[cid]||{}).items||{})[it.id]);for(const b of r.batches){if(bulk.rmMode==='expired'?daysUntil(b.exp)<0:b.exp===bulk.rmExp)hit+=b.qty}}if(hit){units+=hit;boxes++}}
+  return {units,boxes,targets};
+}
+function masterRemove(){
+  if(!cfg().items.length)return '<div class="empty"><p class="muted">Add medications in Contents first.</p></div>';
+  let txt,ok=false;
+  if(bulk.rmMode==='date'&&!bulk.rmExp)txt='Enter the expiry date to remove.';
+  else if(bulk.rmTarget==='pick'&&!bulk.rmPicked.size)txt='Tap the boxes to include.';
+  else{const m=rmMatches();if(m.units){ok=true;txt='Removes '+plural(m.units,'unit')+' from '+plural(m.boxes,'box','boxes')+'.'}else txt='Nothing matches. No stock would be removed.'}
+  return '<div class="card"><h3>Remove stock from several boxes</h3><p class="muted small" style="margin:0">For an expiry sweep, or pulling one expiry date from every box.</p>'+
+    '<label class="f" for="r-item">Medication</label><select id="r-item" data-bind="rmItem">'+itemOptions(bulk.rmItem,true)+'</select>'+
+    '<label class="f">What to remove</label>'+choices('rmode',[['expired','All expired stock'],['date','One expiry date']],bulk.rmMode)+
+    (bulk.rmMode==='date'?'<label class="f" for="r-exp">Expiry date to remove</label><input type="date" id="r-exp" data-bind="rmExp" value="'+esc(bulk.rmExp)+'">':'')+
+    '<label class="f">Which boxes</label>'+choices('rtarget',[['all','All boxes'],['pick','Choose boxes']],bulk.rmTarget)+
+    (bulk.rmTarget==='pick'?pickGrid('rpick',bulk.rmPicked):'')+
+    '<div class="preview'+(ok?'':' none')+'">'+esc(txt)+'</div>'+
+    '<button class="btn danger" data-bulkrm'+(ok?'':' disabled')+'>Remove from boxes</button></div>';
+}
+
+/* ---------- settings ---------- */
+function renderSettings(app){
+  const c=cfg();
+  if(!settingsDraft)settingsDraft={name:c.name,count:c.count,warnDays:c.warnDays,checkDays:c.checkDays,labels:{...c.labels}};
+  const d=settingsDraft;
+  let h='<div class="card"><h3>General</h3>'+
+    '<label class="f" for="s-name">Page title</label><input type="text" id="s-name" data-s="name" value="'+esc(d.name)+'">'+
+    '<label class="f" for="s-count">Number of boxes (1 to 40)</label>'+stepper('s-count',d.count,1)+
+    '<label class="f" for="s-warn">Flag stock expiring within (days)</label>'+stepper('s-warn',d.warnDays,1)+
+    '<label class="f" for="s-check">Boxes need checking every (days)</label>'+stepper('s-check',d.checkDays,1)+'</div>';
+  h+='<div class="card"><h3>Box names (optional)</h3><p class="small muted" style="margin:0 0 6px">For example the room or bag each box lives in.</p>'+
+    Array.from({length:Math.max(1,Math.min(40,d.count|0))},(_,i)=>{const cid='c'+String(i+1).padStart(2,'0');return '<div class="setrow"><b>'+(i+1)+'</b><input type="text" aria-label="Name for box '+(i+1)+'" data-lbl="'+cid+'" value="'+esc(d.labels[cid]||'')+'" placeholder="Box '+(i+1)+'"></div>'}).join('')+'</div>';
+  h+='<button class="btn primary mt" data-savesettings>Save settings</button>';
+  h+='<div class="card"><h3>This phone</h3><p style="margin:0">Signing as <b>'+esc(initials||'not set')+'</b></p><button class="btn mt" data-initials>Change initials</button></div>';
+  app.innerHTML=h;
+}
+
+/* ---------- sheets ---------- */
+function openSheet(s){sheet=s;$('#scrim').hidden=false;renderSheet(true);if(s.vals){for(const[k,v]of Object.entries(s.vals)){const el=document.getElementById(k);if(el)el.value=v}delete s.vals}}
+function closeSheet(){sheet=null;$('#scrim').hidden=true;$('#sheet').innerHTML=''}
+const closeBtn='<button class="close" data-close aria-label="Close">×</button>';
+function renderSheet(fresh){
+  if(!sheet)return;const el=$('#sheet');
+  if(sheet.type==='initials'){
+    if(!fresh)return;
+    el.innerHTML='<div class="shead"><div><h2>Who is signing?</h2><div class="muted small">Your initials are saved on this phone and recorded with each change.</div></div>'+closeBtn+'</div>'+
+      '<label class="f" for="ini">Initials or name</label><input type="text" id="ini" maxlength="20" autocomplete="off" autocapitalize="characters" value="'+esc(initials)+'"><button class="btn primary mt" data-saveini>Save</button>';
+    setTimeout(()=>$('#ini')&&$('#ini').focus(),50);return;
+  }
+  if(sheet.type==='itemedit'){
+    if(!fresh)return;
+    const it=sheet.id?itemById(sheet.id):null;
+    el.innerHTML='<div class="shead"><div><h2>'+(it?'Edit medication':'Add a medication')+'</h2><div class="muted small">'+(it?'Changes apply to every box.':'It will be added to every box and flagged as missing until stock is signed in.')+'</div></div>'+closeBtn+'</div>'+
+      '<label class="f" for="e-name">Medication name and strength</label><input type="text" id="e-name" maxlength="80" value="'+esc(it?it.name:'')+'" placeholder="e.g. Adrenaline 1 mg/mL">'+
+      '<label class="f" for="e-min">Minimum in each box</label>'+stepper('e-min',it?it.min:1,0)+
+      '<button class="btn primary mt" data-saveitem>'+(it?'Save changes':'Add to every box')+'</button>'+
+      (it?'<button class="btn danger" data-removeitem>Remove from every box</button>':'');
+    if(!it)setTimeout(()=>$('#e-name')&&$('#e-name').focus(),50);return;
+  }
+  const {cid,itemId}=sheet;const it=itemById(itemId);if(!it){closeSheet();return}
+  const a=assess(it,((containers[cid]||{}).items||{})[itemId]);
+  const top='<div class="shead"><div><h2>'+esc(it.name)+'</h2><div class="muted small">'+esc(cTitle(cid))+', minimum '+it.min+'</div><div class="pills">'+(a.flags.length?a.flags.map(k=>'<span class="pill '+FLAG[k][1]+'">'+FLAG[k][0]+'</span>').join(''):'<span class="pill ok">OK</span>')+'</div></div>'+closeBtn+'</div>';
+  const bl=a.batches.length?'<div class="list">'+a.batches.map(b=>{const d=daysUntil(b.exp);const col=d<0?'var(--bad)':d<=cfg().warnDays?'var(--warn)':'var(--muted)';
+    return '<div class="batch"><b>'+b.qty+' in stock</b><br><span class="small" style="color:'+col+'">Exp '+fmtDate(b.exp)+', '+relDays(d)+'</span><br><span class="small muted">Signed in by '+esc(b.by||'?')+'</span>'+
+    '<div class="acts"><button data-use="'+b.id+'">Use 1</button><button class="rmb" data-rmb="'+b.id+'">Remove all '+b.qty+'</button></div></div>'}).join('')+'</div>':'<div class="empty small"><p class="muted" style="margin:0">None in this box.</p></div>';
+  if(fresh||!$('#addform')){
+    el.innerHTML='<div id="shtop">'+top+'</div><div id="batches">'+bl+'</div>'+
+      '<div class="card" id="addform"><h3>Sign new stock in</h3><label class="f" for="aq">How many</label>'+stepper('aq',1,1)+
+      '<label class="f" for="ae">Expiry date on the packaging</label><input type="date" id="ae" min="'+nzToday()+'">'+
+      '<button class="btn primary mt" data-add>Sign in stock</button><div class="signas">Signing as <b>'+esc(initials||'not set')+'</b> <button class="link" data-initials>Change</button></div></div>';
+  }else{$('#shtop').innerHTML=top;$('#batches').innerHTML=bl}
+}
+
+/* ---------- actions ---------- */
+function needInitials(then){if(initials)return false;if(then){then.vals={};document.querySelectorAll('#sheet input').forEach(i=>{if(i.id)then.vals[i.id]=i.value})}openSheet({type:'initials',then});return true}
+async function boxOp(body){
+  try{const res=await api('op',{...body,by:initials});containers[body.cid]=res.container;render();renderSheet(false);return true}
+  catch(e){toast(errMsg(e));return false}
+}
+async function adminCall(path,body){
+  try{return await api(path,{...body,pin,by:initials})}
+  catch(e){if(e.status===403){pin='';sess.set('medcheck-pin','');render();toast('Enter the setup PIN again.')}else toast(errMsg(e));return null}
+}
+function refreshMaster(){if(view.tab==='master'||view.tab==='settings')render()}
+
+async function downloadCsv(){
+  const rows=[['Box','Medication','In date','Minimum','Expired','Next expiry','Status','Last checked','Checked by']];
+  for(const cid of cids()){const a=assessC(cid);for(const it of cfg().items){const r=a.res[it.id];rows.push([cTitle(cid),it.name,r.good,it.min,r.expired,r.soonExp||'',r.flags.map(k=>FLAG[k][0]).join('; ')||'OK',a.checked&&a.checked.at?new Date(a.checked.at).toLocaleString('en-NZ'):'Never',a.checked&&a.checked.by||''])}}
+  const csv=rows.map(r=>r.map(v=>{v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');
+  a.href=url;a.download='medication-stock-'+nzToday()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('button');if(!t||busy)return;
+  const d=t.dataset;
+  if(d.tab){if(d.tab==='boxes'&&view.tab==='boxes')view.cid=null;view.tab=d.tab;settingsDraft=null;window.scrollTo(0,0);render();return}
+  if(d.go){view.tab=d.go;render();return}
+  if(d.filter){view.filter=d.filter==='clear'||view.filter===+d.filter?null:+d.filter;render();return}
+  if(d.back!==undefined){view.cid=null;render();window.scrollTo(0,0);return}
+  if(d.box){view.tab='boxes';view.cid=d.box;render();window.scrollTo(0,0);return}
+  if(d.item){openSheet({type:'item',cid:d.cid,itemId:d.item});return}
+  if(d.close!==undefined){closeSheet();return}
+  if(d.initials!==undefined){openSheet({type:'initials',then:sheet&&sheet.type==='item'?{...sheet}:null});return}
+  if(d.saveini!==undefined){const v=$('#ini').value.trim();if(!v){toast('Enter your initials first.');return}initials=v;store.set('medcheck-initials',v);const then=sheet.then;then?openSheet(then):closeSheet();render();return}
+  if(d.step){const q=document.getElementById(d.step);const min=+q.min||0,max=+q.max||999;q.value=Math.min(max,Math.max(min,(parseInt(q.value,10)||0)+(+d.d)));q.dispatchEvent(new Event('input',{bubbles:true}));return}
+
+  const run=async fn=>{busy=true;t.disabled=true;try{await fn()}finally{busy=false;if(t.isConnected)t.disabled=false}};
+
+  if(d.add!==undefined){
+    const qty=parseInt($('#aq').value,10),exp=$('#ae').value;
+    if(!(qty>0)){toast('Enter how many you are signing in.');return}
+    if(!exp){toast('Enter the expiry date from the packaging.');$('#ae').focus();return}
+    if(daysUntil(exp)<0){toast('That date has already passed. Check the packaging.');return}
+    if(needInitials({...sheet}))return;
+    const s={...sheet};
+    await run(async()=>{if(await boxOp({op:'add',cid:s.cid,itemId:s.itemId,qty,exp})){toast('Signed in '+qty+' '+itemById(s.itemId).name);if($('#aq')){$('#aq').value=1;$('#ae').value=''}}});return;
+  }
+  if(d.use){if(needInitials({...sheet}))return;const s={...sheet};await run(()=>boxOp({op:'use',cid:s.cid,itemId:s.itemId,bid:d.use}));return}
+  if(d.rmb){if(needInitials({...sheet}))return;if(!confirm('Remove all of this stock from the box?'))return;const s={...sheet};await run(()=>boxOp({op:'remove',cid:s.cid,itemId:s.itemId,bid:d.rmb}));return}
+  if(d.check){if(needInitials(null))return;const a=assessC(d.check);const note=(a.bad||a.warn)?[a.bad?a.bad+' urgent':'',a.warn?a.warn+' to watch':''].filter(Boolean).join(', '):'all OK';
+    await run(async()=>{if(await boxOp({op:'check',cid:d.check,note}))toast('Box '+cNum(d.check)+' marked as checked')});return}
+  if(d.csv!==undefined){downloadCsv();return}
+
+  if(d.unlock!==undefined){const v=$('#pinin').value.trim();if(!v)return;await run(async()=>{try{await api('pin',{pin:v});pin=v;sess.set('medcheck-pin',v);render()}catch(err){toast(err.status===403?'That PIN is not right.':errMsg(err))}});return}
+  if(d.mtab){view.mtab=d.mtab;render();return}
+  if(d.bmode){bulk.mode=d.bmode;render();return}
+  if(d.btarget){bulk.target=d.btarget;render();return}
+  if(d.bpick){bulk.picked.has(d.bpick)?bulk.picked.delete(d.bpick):bulk.picked.add(d.bpick);render();return}
+  if(d.rmode){bulk.rmMode=d.rmode;render();return}
+  if(d.rtarget){bulk.rmTarget=d.rtarget;render();return}
+  if(d.rpick){bulk.rmPicked.has(d.rpick)?bulk.rmPicked.delete(d.rpick):bulk.rmPicked.add(d.rpick);render();return}
+  if(d.newitem!==undefined){openSheet({type:'itemedit',id:null});return}
+  if(d.edititem){openSheet({type:'itemedit',id:d.edititem});return}
+  if(d.saveitem!==undefined){
+    const name=$('#e-name').value.trim(),min=parseInt($('#e-min').value,10)||0;
+    if(!name){toast('Enter a medication name.');return}
+    if(needInitials({...sheet}))return;
+    const id=sheet.id;
+    await run(async()=>{const res=await adminCall('items',id?{action:'update',id,name,min}:{action:'add',name,min});if(res){config=res.config;closeSheet();toast(id?'Saved':'Added '+name+' to every box');await refresh();render()}});return;
+  }
+  if(d.removeitem!==undefined){
+    const it=itemById(sheet.id);if(!it)return;
+    if(!confirm('Remove '+it.name+' from every box? Its history stays in each box\'s activity log.'))return;
+    if(needInitials({...sheet}))return;
+    await run(async()=>{const res=await adminCall('items',{action:'remove',id:it.id});if(res){config=res.config;closeSheet();toast('Removed '+it.name+' from every box');await refresh();render()}});return;
+  }
+  if(d.bulkadd!==undefined){
+    const [txt,ok]=addPreview();if(!ok)return;
+    if(!confirm(txt+'\n\nGo ahead?'))return;
+    if(needInitials(null))return;
+    const body={kind:'add',itemId:bulk.itemId,mode:bulk.mode,qty:bulk.qty,exp:bulk.exp,cids:bulk.mode==='topup'&&bulk.target==='all'?undefined:addTargets()};
+    await run(async()=>{const res=await adminCall('bulk',body);if(res){Object.assign(containers,res.updated||{});toast(res.units?'Done: '+res.summary:'Nothing needed adding');bulk.exp='';bulk.picked.clear();await refresh();render()}});return;
+  }
+  if(d.bulkrm!==undefined){
+    const m=rmMatches();if(!m.units)return;
+    if(!confirm('Remove '+plural(m.units,'unit')+' from '+plural(m.boxes,'box','boxes')+'?'))return;
+    if(needInitials(null))return;
+    const body={kind:'remove',itemId:bulk.rmItem,mode:bulk.rmMode,exp:bulk.rmExp,cids:bulk.rmTarget==='pick'?[...bulk.rmPicked]:undefined};
+    await run(async()=>{const res=await adminCall('bulk',body);if(res){Object.assign(containers,res.updated||{});toast(res.units?'Done: '+res.summary:'Nothing was removed');bulk.rmPicked.clear();await refresh();render()}});return;
+  }
+  if(d.savesettings!==undefined){
+    if(needInitials(null))return;
+    await run(async()=>{const res=await adminCall('settings',settingsDraft);if(res){config=res.config;settingsDraft=null;toast('Settings saved');render()}});return;
+  }
+});
+$('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='pinin')document.querySelector('[data-unlock]').click()});
+
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.bind){bulk[t.dataset.bind]=t.value;render();return}
+  if(t.id==='b-qty'){bulk.qty=parseInt(t.value,10)||0;const p=$('#b-preview');if(p){const[txt,ok]=addPreview();p.textContent=txt;p.className='preview'+(ok?'':' none');document.querySelector('[data-bulkadd]').disabled=!ok}return}
+  if(!settingsDraft)return;
+  if(t.dataset.s)settingsDraft[t.dataset.s]=t.value;
+  else if(t.id==='s-count'){const n=parseInt(t.value,10);if(n>=1&&n<=40&&n!==settingsDraft.count){settingsDraft.count=n;const y=window.scrollY;renderSettings($('#app'));window.scrollTo(0,y)}}
+  else if(t.id==='s-warn')settingsDraft.warnDays=parseInt(t.value,10)||settingsDraft.warnDays;
+  else if(t.id==='s-check')settingsDraft.checkDays=parseInt(t.value,10)||settingsDraft.checkDays;
+  else if(t.dataset.lbl)settingsDraft.labels[t.dataset.lbl]=t.value;
+});
+// selects fire change, dates fire change on some phones
+document.addEventListener('change',e=>{if(e.target.dataset.bind){bulk[e.target.dataset.bind]=e.target.value;render()}});
+
+/* ---------- data ---------- */
+let loading=false;
+async function refresh(){
+  if(loading)return;loading=true;
+  try{
+    const d=await api('state');
+    config=d.config||null;pinRequired=!!d.pinRequired;masterlog=d.masterlog||[];
+    for(const k in containers)delete containers[k];Object.assign(containers,d.containers||{});
+    loaded=true;offline=false;setSync('Updated '+new Date().toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}));
+    if(view.tab==='boxes'||view.tab==='issues')render();
+    if(sheet&&sheet.type==='item')renderSheet(false);
+  }catch(e){setSync('No connection');offline=true;if(!loaded)render()}
+  finally{loading=false}
+}
+render();refresh().then(()=>{if(!initials&&!sheet)openSheet({type:'initials',then:null})});
+setInterval(()=>{if(document.visibilityState==='visible')refresh()},20000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
+</script>
+</body>
+</html>
