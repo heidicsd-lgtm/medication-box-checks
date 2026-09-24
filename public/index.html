@@ -89,7 +89,7 @@ h3.sec{font-size:1.05rem;margin:24px 0 8px}
 .mt{margin-top:16px}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;background:var(--surface);border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
-nav.tabs button{flex:1;max-width:180px;min-height:68px;background:none;border:0;padding:8px 2px 10px;font-size:.82rem;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+nav.tabs button{flex:1;max-width:220px;min-height:68px;background:none;border:0;padding:8px 2px 10px;font-size:.82rem;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
 nav.tabs button[aria-current="page"]{color:var(--accent)}
 nav.tabs button[aria-current="page"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
 nav.tabs svg{width:28px;height:28px}
@@ -151,7 +151,6 @@ select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(
 </div>
 <nav class="tabs" aria-label="Sections">
   <button data-tab="boxes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Boxes</button>
-  <button data-tab="issues"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.5"/></svg>Issues<span id="ibadge"></span></button>
   <button data-tab="master"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Master stock</button>
   <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
 </nav>
@@ -167,6 +166,7 @@ const sess={get(k){try{return sessionStorage.getItem(k)||''}catch(e){return ''}}
 
 let initials=store.get('medcheck-initials');
 let pin=sess.get('medcheck-pin');
+let masterAck=sess.get('medcheck-mack')==='1';
 let config=null,loaded=false,offline=false,pinRequired=false,masterlog=[];
 const containers={};
 const view={tab:'boxes',cid:null,filter:null,mtab:'contents'};
@@ -228,14 +228,13 @@ const errMsg=e=>e&&e.status?e.message:'No connection. Check your signal and try 
 function render(){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===view.tab?'page':'false'));
   $('#title').textContent=cfg().name;document.title=cfg().name;
-  let bad=0;if(loaded&&cfg().items.length)for(const cid of cids())bad+=assessC(cid).bad;
-  $('#ibadge').innerHTML=bad?'<span class="badge">'+bad+'</span>':'';
   const app=$('#app');
   if(offline&&!loaded){app.innerHTML='<div class="empty"><p><b>Cannot reach the stock list.</b></p><p class="muted">Check your connection. The page will keep trying.</p></div>';return}
   if(!loaded){app.innerHTML='<p class="muted">Loading boxes…</p>';return}
   if(view.tab==='boxes')view.cid?renderBox(app):renderGrid(app);
   else if(view.tab==='issues')renderIssues(app);
   else if(pinRequired&&!pin)renderPin(app);
+  else if(view.tab==='master'&&!masterAck)renderMasterWarn(app);
   else if(view.tab==='master')renderMaster(app);
   else renderSettings(app);
 }
@@ -316,6 +315,13 @@ function renderPin(app){
 }
 
 /* ---------- master stock ---------- */
+function renderMasterWarn(app){
+  const n=cfg().count;
+  app.innerHTML='<div class="card" style="border-color:var(--warn)"><h3>This changes every box</h3>'+
+    '<p style="margin:6px 0 0">Master stock is for changing what every box is stocked with. Anything you add, remove or edit here applies to all '+plural(n,'box','boxes')+' straight away, for everyone using the app.</p>'+
+    '<p class="muted" style="margin:12px 0 0">To sign stock in or out of the box you are checking, go back to Boxes and tap that box instead.</p>'+
+    '<button class="btn primary mt" data-mack>I understand, continue</button><button class="btn" data-go="boxes">Go back to Boxes</button></div>';
+}
 function seg(key,opts,cur){return '<div class="seg" role="group">'+opts.map(([v,l])=>'<button data-'+key+'="'+v+'" aria-pressed="'+(cur===v)+'">'+l+'</button>').join('')+'</div>'}
 function choices(key,opts,cur){return '<div class="choices">'+opts.map(([v,l])=>'<button class="choice" data-'+key+'="'+v+'" aria-pressed="'+(cur===v)+'">'+l+'</button>').join('')+'</div>'}
 function pickGrid(key,set){return '<div class="pickgrid">'+cids().map(cid=>'<button class="pick" data-'+key+'="'+cid+'" aria-pressed="'+set.has(cid)+'" aria-label="'+esc(cTitle(cid))+'">'+cNum(cid)+'</button>').join('')+'</div>'}
@@ -406,6 +412,7 @@ function renderSettings(app){
   h+='<div class="card"><h3>Box names (optional)</h3><p class="small muted" style="margin:0 0 6px">For example the room or bag each box lives in.</p>'+
     Array.from({length:Math.max(1,Math.min(40,d.count|0))},(_,i)=>{const cid='c'+String(i+1).padStart(2,'0');return '<div class="setrow"><b>'+(i+1)+'</b><input type="text" aria-label="Name for box '+(i+1)+'" data-lbl="'+cid+'" value="'+esc(d.labels[cid]||'')+'" placeholder="Box '+(i+1)+'"></div>'}).join('')+'</div>';
   h+='<button class="btn primary mt" data-savesettings>Save settings</button>';
+  h+='<div class="card"><h3>Stock report</h3><p class="muted small" style="margin:0">A spreadsheet of every box, medication, count and expiry.</p><button class="btn mt" data-csv>Download stock report (CSV)</button></div>';
   h+='<div class="card"><h3>This phone</h3><p style="margin:0">Signing as <b>'+esc(initials||'not set')+'</b></p><button class="btn mt" data-initials>Change initials</button></div>';
   app.innerHTML=h;
 }
@@ -470,7 +477,7 @@ document.addEventListener('click',async e=>{
   const t=e.target.closest('button');if(!t||busy)return;
   const d=t.dataset;
   if(d.tab){if(d.tab==='boxes'&&view.tab==='boxes')view.cid=null;view.tab=d.tab;settingsDraft=null;window.scrollTo(0,0);render();return}
-  if(d.go){view.tab=d.go;render();return}
+  if(d.go){view.tab=d.go;view.cid=null;window.scrollTo(0,0);render();return}
   if(d.filter){view.filter=d.filter==='clear'||view.filter===+d.filter?null:+d.filter;render();return}
   if(d.back!==undefined){view.cid=null;render();window.scrollTo(0,0);return}
   if(d.box){view.tab='boxes';view.cid=d.box;render();window.scrollTo(0,0);return}
@@ -498,6 +505,7 @@ document.addEventListener('click',async e=>{
   if(d.csv!==undefined){downloadCsv();return}
 
   if(d.unlock!==undefined){const v=$('#pinin').value.trim();if(!v)return;await run(async()=>{try{await api('pin',{pin:v});pin=v;sess.set('medcheck-pin',v);render()}catch(err){toast(err.status===403?'That PIN is not right.':errMsg(err))}});return}
+  if(d.mack!==undefined){masterAck=true;sess.set('medcheck-mack','1');render();window.scrollTo(0,0);return}
   if(d.mtab){view.mtab=d.mtab;render();return}
   if(d.bmode){bulk.mode=d.bmode;render();return}
   if(d.btarget){bulk.target=d.btarget;render();return}
@@ -566,7 +574,7 @@ async function refresh(){
     config=d.config||null;pinRequired=!!d.pinRequired;masterlog=d.masterlog||[];
     for(const k in containers)delete containers[k];Object.assign(containers,d.containers||{});
     loaded=true;offline=false;setSync('Updated '+new Date().toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}));
-    if(view.tab==='boxes'||view.tab==='issues')render();
+    if(view.tab==='boxes')render();
     if(sheet&&sheet.type==='item')renderSheet(false);
   }catch(e){setSync('No connection');offline=true;if(!loaded)render()}
   finally{loading=false}
