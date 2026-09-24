@@ -181,6 +181,7 @@ const cLabel=cid=>(cfg().labels||{})[cid]||'';
 const cTitle=cid=>'Box '+cNum(cid)+(cLabel(cid)?', '+cLabel(cid):'');
 const itemById=id=>cfg().items.find(i=>i.id===id);
 const plural=(n,w,p)=>n+' '+(n===1?w:(p||w+'s'));
+const uw=(it,n)=>it&&it.unit==='box'?(n===1?' box':' boxes'):'';
 
 function nzToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Pacific/Auckland'})}
 function daysUntil(exp){const[y,m,d]=exp.split('-').map(Number);const[ty,tm,td]=nzToday().split('-').map(Number);return Math.round((Date.UTC(y,m-1,d)-Date.UTC(ty,tm-1,td))/864e5)}
@@ -264,7 +265,7 @@ function renderGrid(app){
 function itemRow(cid,it,a){
   const pills=a.flags.length?a.flags.map(k=>'<span class="pill '+FLAG[k][1]+'">'+FLAG[k][0]+'</span>').join(''):'<span class="pill ok">OK</span>';
   const meta=a.soonExp?'Next expiry '+fmtDate(a.soonExp)+', '+relDays(a.soon):(a.total?'All stock expired':'Nothing signed in');
-  return '<button class="row" data-item="'+it.id+'" data-cid="'+cid+'"><span class="main"><span class="name">'+esc(it.name)+'</span><br><span class="meta">'+meta+'</span><span class="pills">'+pills+'</span></span><span class="qty">'+a.good+'<small>of '+it.min+'</small></span></button>';
+  return '<button class="row" data-item="'+it.id+'" data-cid="'+cid+'"><span class="main"><span class="name">'+esc(it.name)+'</span><br><span class="meta">'+meta+'</span><span class="pills">'+pills+'</span></span><span class="qty">'+a.good+'<small>of '+it.min+uw(it,it.min)+'</small></span></button>';
 }
 
 function renderBox(app){
@@ -295,7 +296,7 @@ function renderIssues(app){
     }
   }
   const line=e=>{const r=e.r;const why=r.flags.map(k=>FLAG[k][0].toLowerCase()).join(', ');const exp=r.soonExp?', next exp '+fmtDate(r.soonExp):'';
-    return '<button class="row" data-item="'+e.it.id+'" data-cid="'+e.cid+'"><span class="main"><span class="name">'+esc(cTitle(e.cid))+'</span><br><span class="meta">'+esc(e.it.name)+': '+why+exp+'</span></span><span class="qty">'+r.good+'<small>of '+e.it.min+'</small></span></button>'};
+    return '<button class="row" data-item="'+e.it.id+'" data-cid="'+e.cid+'"><span class="main"><span class="name">'+esc(cTitle(e.cid))+'</span><br><span class="meta">'+esc(e.it.name)+': '+why+exp+'</span></span><span class="qty">'+r.good+'<small>of '+e.it.min+uw(e.it,e.it.min)+'</small></span></button>'};
   let h='';
   if(!now.length&&!soon.length&&!overdue.length)h+='<div class="empty"><p><b>Every box is stocked, in date and checked.</b></p></div>';
   if(now.length)h+='<h3 class="sec" style="margin-top:0">Act now ('+now.length+')</h3><div class="list">'+now.map(line).join('')+'</div>';
@@ -332,7 +333,7 @@ function renderMaster(app){
 function masterContents(){
   const items=cfg().items;
   let h='<p class="muted small" style="margin-top:0">Every box holds the same contents. Adding or removing a medication here changes every box at once.</p>';
-  h+=items.length?'<div class="list">'+items.map(i=>'<button class="row" data-edititem="'+i.id+'"><span class="main"><span class="name">'+esc(i.name)+'</span><br><span class="meta">Minimum '+i.min+' in each box</span></span><span class="chev">›</span></button>').join('')+'</div>':'<div class="empty"><p class="muted">No medications yet. Add the first one below.</p></div>';
+  h+=items.length?'<div class="list">'+items.map(i=>'<button class="row" data-edititem="'+i.id+'"><span class="main"><span class="name">'+esc(i.name)+'</span><br><span class="meta">Minimum '+i.min+uw(i,i.min)+' in each box</span></span><span class="chev">›</span></button>').join('')+'</div>':'<div class="empty"><p class="muted">No medications yet. Add the first one below.</p></div>';
   h+='<button class="btn primary mt" data-newitem>Add a medication</button>';
   return h;
 }
@@ -354,7 +355,7 @@ function addPreview(){
   const q=Math.max(0,parseInt(bulk.qty,10)||0);
   if(!q)return ['Enter how many to add to each box.',false];
   if(!t.length)return ['No boxes match that choice.',false];
-  return ['Adds '+q+' '+it.name+' to each of '+plural(t.length,'box','boxes')+'. You will need '+(q*t.length)+' in hand.',true];
+  return ['Adds '+q+uw(it,q)+' of '+it.name+' to each of '+plural(t.length,'box','boxes')+'. You will need '+(q*t.length)+' in hand.',true];
 }
 function masterAdd(){
   if(!cfg().items.length)return '<div class="empty"><p class="muted">Add medications in Contents first.</p></div>';
@@ -362,7 +363,7 @@ function masterAdd(){
   return '<div class="card"><h3>Sign stock into several boxes</h3><p class="muted small" style="margin:0">For restocking days, when the same stock goes into many boxes.</p>'+
     '<label class="f" for="b-item">Medication</label><select id="b-item" data-bind="itemId">'+itemOptions(bulk.itemId)+'</select>'+
     '<label class="f">How much</label>'+choices('bmode',[['fixed','Same amount in each box'],['topup','Top up to minimum']],bulk.mode)+
-    (bulk.mode==='fixed'?'<label class="f" for="b-qty">Amount per box</label>'+stepper('b-qty',bulk.qty,1):'')+
+    (bulk.mode==='fixed'?'<label class="f" for="b-qty">Amount per box'+(itemById(bulk.itemId)&&itemById(bulk.itemId).unit==='box'?' (boxes)':'')+'</label>'+stepper('b-qty',bulk.qty,1):'')+
     '<label class="f" for="b-exp">Expiry date on the packaging</label><input type="date" id="b-exp" data-bind="exp" value="'+esc(bulk.exp)+'" min="'+nzToday()+'">'+
     '<label class="f">Which boxes</label>'+choices('btarget',[['all','All boxes'],['below','Below minimum'],['missing','Missing it'],['pick','Choose boxes']],bulk.target)+
     (bulk.target==='pick'?pickGrid('bpick',bulk.picked):'')+
@@ -426,20 +427,20 @@ function renderSheet(fresh){
     const it=sheet.id?itemById(sheet.id):null;
     el.innerHTML='<div class="shead"><div><h2>'+(it?'Edit medication':'Add a medication')+'</h2><div class="muted small">'+(it?'Changes apply to every box.':'It will be added to every box and flagged as missing until stock is signed in.')+'</div></div>'+closeBtn+'</div>'+
       '<label class="f" for="e-name">Medication name and strength</label><input type="text" id="e-name" maxlength="80" value="'+esc(it?it.name:'')+'" placeholder="e.g. Adrenaline 1 mg/mL">'+
-      '<label class="f" for="e-min">Minimum in each box</label>'+stepper('e-min',it?it.min:1,0)+
+      '<label class="f">Counted as</label>'+choices('eunit',[['','Single items'],['box','Boxes']],sheet.unit)+'<label class="f" for="e-min">Minimum in each box</label>'+stepper('e-min',it?it.min:1,0)+
       '<button class="btn primary mt" data-saveitem>'+(it?'Save changes':'Add to every box')+'</button>'+
       (it?'<button class="btn danger" data-removeitem>Remove from every box</button>':'');
     if(!it)setTimeout(()=>$('#e-name')&&$('#e-name').focus(),50);return;
   }
   const {cid,itemId}=sheet;const it=itemById(itemId);if(!it){closeSheet();return}
   const a=assess(it,((containers[cid]||{}).items||{})[itemId]);
-  const top='<div class="shead"><div><h2>'+esc(it.name)+'</h2><div class="muted small">'+esc(cTitle(cid))+', minimum '+it.min+'</div><div class="pills">'+(a.flags.length?a.flags.map(k=>'<span class="pill '+FLAG[k][1]+'">'+FLAG[k][0]+'</span>').join(''):'<span class="pill ok">OK</span>')+'</div></div>'+closeBtn+'</div>';
+  const top='<div class="shead"><div><h2>'+esc(it.name)+'</h2><div class="muted small">'+esc(cTitle(cid))+', minimum '+it.min+uw(it,it.min)+'</div><div class="pills">'+(a.flags.length?a.flags.map(k=>'<span class="pill '+FLAG[k][1]+'">'+FLAG[k][0]+'</span>').join(''):'<span class="pill ok">OK</span>')+'</div></div>'+closeBtn+'</div>';
   const bl=a.batches.length?'<div class="list">'+a.batches.map(b=>{const d=daysUntil(b.exp);const col=d<0?'var(--bad)':d<=cfg().warnDays?'var(--warn)':'var(--muted)';
-    return '<div class="batch"><b>'+b.qty+' in stock</b><br><span class="small" style="color:'+col+'">Exp '+fmtDate(b.exp)+', '+relDays(d)+'</span><br><span class="small muted">Signed in by '+esc(b.by||'?')+'</span>'+
+    return '<div class="batch"><b>'+b.qty+uw(it,b.qty)+' in stock</b><br><span class="small" style="color:'+col+'">Exp '+fmtDate(b.exp)+', '+relDays(d)+'</span><br><span class="small muted">Signed in by '+esc(b.by||'?')+'</span>'+
     '<div class="acts"><button data-use="'+b.id+'">Use 1</button><button class="rmb" data-rmb="'+b.id+'">Remove all '+b.qty+'</button></div></div>'}).join('')+'</div>':'<div class="empty small"><p class="muted" style="margin:0">None in this box.</p></div>';
   if(fresh||!$('#addform')){
     el.innerHTML='<div id="shtop">'+top+'</div><div id="batches">'+bl+'</div>'+
-      '<div class="card" id="addform"><h3>Sign new stock in</h3><label class="f" for="aq">How many</label>'+stepper('aq',1,1)+
+      '<div class="card" id="addform"><h3>Sign new stock in</h3><label class="f" for="aq">How many'+(it.unit==='box'?' boxes':'')+'</label>'+stepper('aq',1,1)+
       '<label class="f" for="ae">Expiry date on the packaging</label><input type="date" id="ae" min="'+nzToday()+'">'+
       '<button class="btn primary mt" data-add>Sign in stock</button><div class="signas">Signing as <b>'+esc(initials||'not set')+'</b> <button class="link" data-initials>Change</button></div></div>';
   }else{$('#shtop').innerHTML=top;$('#batches').innerHTML=bl}
@@ -504,14 +505,15 @@ document.addEventListener('click',async e=>{
   if(d.rmode){bulk.rmMode=d.rmode;render();return}
   if(d.rtarget){bulk.rmTarget=d.rtarget;render();return}
   if(d.rpick){bulk.rmPicked.has(d.rpick)?bulk.rmPicked.delete(d.rpick):bulk.rmPicked.add(d.rpick);render();return}
-  if(d.newitem!==undefined){openSheet({type:'itemedit',id:null});return}
-  if(d.edititem){openSheet({type:'itemedit',id:d.edititem});return}
+  if(d.newitem!==undefined){openSheet({type:'itemedit',id:null,unit:''});return}
+  if(d.edititem){openSheet({type:'itemedit',id:d.edititem,unit:(itemById(d.edititem)||{}).unit||''});return}
+  if(d.eunit!==undefined&&sheet&&sheet.type==='itemedit'){sheet.unit=d.eunit;document.querySelectorAll('[data-eunit]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.eunit===sheet.unit));return}
   if(d.saveitem!==undefined){
     const name=$('#e-name').value.trim(),min=parseInt($('#e-min').value,10)||0;
     if(!name){toast('Enter a medication name.');return}
     if(needInitials({...sheet}))return;
     const id=sheet.id;
-    await run(async()=>{const res=await adminCall('items',id?{action:'update',id,name,min}:{action:'add',name,min});if(res){config=res.config;closeSheet();toast(id?'Saved':'Added '+name+' to every box');await refresh();render()}});return;
+    await run(async()=>{const res=await adminCall('items',id?{action:'update',id,name,min,unit:sheet.unit}:{action:'add',name,min,unit:sheet.unit});if(res){config=res.config;closeSheet();toast(id?'Saved':'Added '+name+' to every box');await refresh();render()}});return;
   }
   if(d.removeitem!==undefined){
     const it=itemById(sheet.id);if(!it)return;
